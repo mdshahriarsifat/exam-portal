@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Portal</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--border:#2a2e38;--text:#e8e9ec;--sub:#9aa0ac;--accent:#5b8def;--accent2:#2f7d5f;--danger:#d9534f;--mono:'Courier New',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px;flex:1;width:100%}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px}
+h1{font-size:22px;font-weight:600;letter-spacing:.5px}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
+nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card h2{font-size:16px;margin-bottom:12px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
+input,select{width:100%;background:#0f1115;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:15px}
+input[type=file]{padding:8px}
+.row{display:flex;gap:10px;align-items:center}
+.row>*{flex:1}
+button.primary{background:var(--accent);border:none;color:#fff;padding:11px 18px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;margin-top:14px}
+button.primary:hover{opacity:.9}
+button.small{background:var(--border);border:none;color:var(--text);padding:7px 12px;border-radius:6px;font-size:13px;cursor:pointer}
+button.danger{background:var(--danger)}
+button.green{background:var(--accent2)}
+.pdf-item{display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.pdf-item .meta{font-size:13px;color:var(--sub)}
+.badge{font-size:11px;padding:3px 8px;border-radius:5px;font-weight:600}
+.badge.open{background:#1f3a2a;color:#7ee8a0}
+.badge.locked{background:#3a1f1f;color:#f08080}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--border)}
+th{color:var(--sub);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.hidden{display:none!important}
+.timer{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent);text-align:center;margin:10px 0}
+.empty{color:var(--sub);text-align:center;padding:30px 0;font-size:14px}
+footer{text-align:center;padding:18px;font-size:13px;color:var(--sub);border-top:1px solid var(--border)}
+footer a{color:var(--accent);text-decoration:none}
+.err{color:var(--danger);font-size:13px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Exam Portal</h1>
+  <nav>
+    <button class="navbtn active" data-v="exam">Exams</button>
+    <button class="navbtn" data-v="dash">Dashboard</button>
+    <button class="navbtn" data-v="admin">Admin</button>
+  </nav>
+</header>
+
+<div id="view-exam"></div>
+<div id="view-dash" class="hidden"></div>
+<div id="view-admin" class="hidden"></div>
+
+</div>
+<footer>
+  Created by <a href="https://sites.google.com/view/mdshahriarsifat" target="_blank">Md Shahriar Sifat</a>
+</footer>
+
+<script>
+const ADMIN_HASH = "468e585a8224649006ac55def8637907cda2b4a821ba6b02860eefe1959f2db0";
+let admin = false;
+async function sha256(s){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+let pdfs = [];
+let logs = [];
+let activeExam = null;
+
+async function load(){
+  try{ const r = await window.storage.get('pdfs', true); pdfs = r ? JSON.parse(r.value) : []; }catch(e){ pdfs = []; }
+  try{ const r = await window.storage.get('logs', true); logs = r ? JSON.parse(r.value) : []; }catch(e){ logs = []; }
+}
+async function savePdfs(){ await window.storage.set('pdfs', JSON.stringify(pdfs), true); }
+async function saveLogs(){ await window.storage.set('logs', JSON.stringify(logs), true); }
+
+function isVisible(p){
+  if(p.visibility === 'permanent') return true;
+  if(p.visibility === 'hidden') return false;
+  return Date.now() < p.expiresAt;
+}
+function fmtDate(ts){ return new Date(ts).toLocaleString(); }
+function fmtDur(ms){
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return (h?h+'h ':'')+(m?m+'m ':'')+sec+'s';
+}
+
+// ---------- EXAM VIEW ----------
+function renderExam(){
+  const el = document.getElementById('view-exam');
+  if(activeExam){ renderExamSession(); return; }
+  const visible = pdfs.filter(isVisible);
+  if(!visible.length){ el.innerHTML = '<div class="card empty">No exams are currently available.</div>'; return; }
+  el.innerHTML = visible.map(p => `
+    <div class="card">
+      <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
+      <p class="meta" style="color:var(--sub);font-size:13px;margin:6px 0 12px">Duration: ${p.duration} min</p>
+      <label>Your name</label>
+      <input type="text" id="ename-${p.id}" placeholder="Enter your full name">
+      <button class="primary" onclick="startExam('${p.id}')">Start exam</button>
+    </div>`).join('');
+}
+
+function startExam(id){
+  const p = pdfs.find(x=>x.id===id);
+  const name = document.getElementById('ename-'+id).value.trim();
+  if(!name){ alert('Please enter your name'); return; }
+  activeExam = { p, name, start: Date.now(), durationMs: p.duration*60000 };
+  renderExamSession();
+}
+
+function renderExamSession(){
+  const el = document.getElementById('view-exam');
+  const {p, name, start, durationMs} = activeExam;
+  el.innerHTML = `
+    <div class="card">
+      <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
+      <p class="meta">Candidate: ${name}</p>
+      <div class="timer" id="examTimer">--:--</div>
+      <iframe src="${p.data}" style="width:100%;height:520px;border:1px solid var(--border);border-radius:8px;margin-top:10px"></iframe>
+      <button class="primary danger" onclick="finishExam(false)">Submit / End exam</button>
+    </div>`;
+  tick();
+}
+let timerInt;
+function tick(){
+  clearInterval(timerInt);
+  timerInt = setInterval(()=>{
+    if(!activeExam) return clearInterval(timerInt);
+    const elapsed = Date.now() - activeExam.start;
+    const remain = activeExam.durationMs - elapsed;
+    const t = document.getElementById('examTimer');
+    if(!t) return clearInterval(timerInt);
+    if(remain <= 0){ t.textContent = "Time's up!"; clearInterval(timerInt); finishExam(true); return; }
+    const m = Math.floor(remain/60000), s = Math.floor((remain%60000)/1000);
+    t.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  },1000);
+}
+async function finishExam(auto){
+  if(!activeExam) return;
+  const spent = Date.now() - activeExam.start;
+  logs.unshift({ name: activeExam.name, exam: activeExam.p.name, date: Date.now(), spentMs: spent });
+  await saveLogs();
+  activeExam = null;
+  clearInterval(timerInt);
+  alert(auto ? 'Time is up. Exam submitted.' : 'Exam submitted.');
+  renderExam();
+  renderDash();
+}
+
+// ---------- DASHBOARD ----------
+function renderDash(){
+  const el = document.getElementById('view-dash');
+  if(!logs.length){ el.innerHTML = '<div class="card empty">No exam attempts yet.</div>'; return; }
+  el.innerHTML = `<div class="card"><h2>Exam attempts</h2>
+  <table><thead><tr><th>Name</th><th>Exam</th><th>Date & time</th><th>Duration spent</th></tr></thead><tbody>
+  ${logs.map(l=>`<tr><td>${l.name}</td><td>${l.exam}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+// ---------- ADMIN ----------
+function renderAdmin(){
+  const el = document.getElementById('view-admin');
+  if(!admin){
+    el.innerHTML = `<div class="card"><h2>Admin login</h2>
+      <label>Password</label>
+      <input type="password" id="adminPass">
+      <div id="adminErr" class="err"></div>
+      <button class="primary" onclick="adminLogin()">Login</button></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="card">
+      <h2>Upload PDF</h2>
+      <label>Exam name</label>
+      <input type="text" id="upName" placeholder="e.g. Midterm 2026">
+      <label>Exam duration (minutes, for candidates)</label>
+      <input type="number" id="upDuration" value="60" min="1">
+      <label>Visibility</label>
+      <div class="row">
+        <select id="visType">
+          <option value="permanent">Permanent (always visible)</option>
+          <option value="timed">Timed (hide after duration)</option>
+          <option value="hidden">Hidden (admin only)</option>
+        </select>
+        <input type="number" id="visMinutes" placeholder="Minutes visible" value="60" min="1">
+      </div>
+      <label>PDF file</label>
+      <input type="file" id="upFile" accept="application/pdf">
+      <button class="primary" onclick="uploadPdf()">Upload</button>
+      <div id="upErr" class="err"></div>
+    </div>
+    <div class="card">
+      <h2>Manage exams</h2>
+      ${pdfs.length ? pdfs.map(p=>`
+        <div class="pdf-item">
+          <div>
+            <strong>${p.name}</strong>
+            <div class="meta">Duration ${p.duration}min · ${p.visibility==='permanent'?'Permanent':p.visibility==='hidden'?'Hidden':'Visible until '+fmtDate(p.expiresAt)}
+            <span class="badge ${isVisible(p)?'open':'locked'}">${isVisible(p)?'Visible':'Hidden'}</span></div>
+          </div>
+          <div class="row" style="flex:none;gap:6px">
+            <button class="small green" onclick="setVisible('${p.id}','permanent')">Permanent</button>
+            <button class="small" onclick="setVisible('${p.id}','hidden')">Hide</button>
+            <button class="small danger" onclick="deletePdf('${p.id}')">Delete</button>
+          </div>
+        </div>`).join('') : '<div class="empty">No exams uploaded yet.</div>'}
+    </div>
+    <button class="small" onclick="adminLogout()">Logout</button>`;
+}
+
+async function adminLogin(){
+  const v = document.getElementById('adminPass').value;
+  if(await sha256(v) === ADMIN_HASH){ admin = true; renderAdmin(); }
+  else document.getElementById('adminErr').textContent = 'Incorrect password';
+}
+function adminLogout(){ admin = false; renderAdmin(); }
+
+function uploadPdf(){
+  const name = document.getElementById('upName').value.trim();
+  const duration = parseInt(document.getElementById('upDuration').value);
+  const visType = document.getElementById('visType').value;
+  const visMinutes = parseInt(document.getElementById('visMinutes').value);
+  const file = document.getElementById('upFile').files[0];
+  const err = document.getElementById('upErr');
+  err.textContent = '';
+  if(!name || !duration || !file){ err.textContent = 'Please fill all fields and choose a PDF.'; return; }
+  if(visType==='timed' && !visMinutes){ err.textContent = 'Enter visibility minutes.'; return; }
+  if(file.size > 4.5*1024*1024){ err.textContent = 'File too large (max ~4.5MB for storage).'; return; }
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const entry = {
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      name, duration, data: e.target.result,
+      visibility: visType==='hidden' ? 'hidden' : (visType==='permanent' ? 'permanent' : 'timed'),
+      expiresAt: visType==='timed' ? Date.now() + visMinutes*60000 : null
+    };
+    pdfs.unshift(entry);
+    await savePdfs();
+    renderAdmin();
+  };
+  reader.readAsDataURL(file);
+}
+async function setVisible(id, type){
+  const p = pdfs.find(x=>x.id===id);
+  p.visibility = type;
+  if(type==='permanent') p.expiresAt = null;
+  await savePdfs();
+  renderAdmin();
+}
+async function deletePdf(id){
+  if(!confirm('Delete this exam?')) return;
+  pdfs = pdfs.filter(x=>x.id!==id);
+  await savePdfs();
+  renderAdmin();
+}
+
+// ---------- NAV ----------
+document.querySelectorAll('.navbtn').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.navbtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    ['exam','dash','admin'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden'));
+    document.getElementById('view-'+b.dataset.v).classList.remove('hidden');
+    if(b.dataset.v==='exam') renderExam();
+    if(b.dataset.v==='dash') renderDash();
+    if(b.dataset.v==='admin') renderAdmin();
+  };
+});
+
+(async function(){ await load(); renderExam(); renderDash(); renderAdmin(); })();
+</script>
+</body>
+</html>
