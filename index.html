@@ -40,6 +40,8 @@ th{color:var(--sub);font-weight:600;font-size:12px;text-transform:uppercase;lett
 footer{text-align:center;padding:18px;font-size:13px;color:var(--sub);border-top:1px solid var(--border)}
 footer a{color:var(--accent);text-decoration:none}
 .err{color:var(--danger);font-size:13px;margin-top:6px}
+.exam-active{user-select:none;-webkit-user-select:none}
+.exam-active img,.exam-active canvas{pointer-events:none}
 </style>
 </head>
 <body>
@@ -62,7 +64,24 @@ footer a{color:var(--accent);text-decoration:none}
   Created by <a href="https://sites.google.com/view/mdshahriarsifat" target="_blank">Md Shahriar Sifat</a>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+// === FIREBASE CONFIG: replace with your own project's config ===
+const firebaseConfig = {
+  apiKey: "AIzaSyBBEuqHTnmarX-mpmmd41zpg7M7v2gAzic",
+  authDomain: "exam-portal-sifat.firebaseapp.com",
+  databaseURL: "https://exam-portal-sifat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "exam-portal-sifat",
+  storageBucket: "exam-portal-sifat.firebasestorage.app",
+  messagingSenderId: "942351859035",
+  appId: "1:942351859035:web:64381824bdf73f2ea82e7e",
+  measurementId: "G-49K6C5XCWR"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const ADMIN_HASH = "468e585a8224649006ac55def8637907cda2b4a821ba6b02860eefe1959f2db0";
 let admin = false;
 async function sha256(s){
@@ -73,19 +92,19 @@ let pdfs = [];
 let logs = [];
 let activeExam = null;
 
-async function load(){
-  try{ const r = await window.storage.get('pdfs', true); pdfs = r ? JSON.parse(r.value) : []; }catch(e){ pdfs = []; }
-  try{ const r = await window.storage.get('logs', true); logs = r ? JSON.parse(r.value) : []; }catch(e){ logs = []; }
+function load(){
+  db.ref('pdfs').on('value', s=>{ pdfs = s.val() ? Object.values(s.val()) : []; renderExam(); renderAdmin(); });
+  db.ref('logs').on('value', s=>{ logs = s.val() ? Object.values(s.val()).sort((a,b)=>b.date-a.date) : []; renderDash(); });
 }
-async function savePdfs(){ await window.storage.set('pdfs', JSON.stringify(pdfs), true); }
-async function saveLogs(){ await window.storage.set('logs', JSON.stringify(logs), true); }
+async function savePdfs(){ const obj={}; pdfs.forEach(p=>obj[p.id]=p); await db.ref('pdfs').set(obj); }
+async function saveLog(entry){ await db.ref('logs/'+entry.id).set(entry); }
 
 function isVisible(p){
   if(p.visibility === 'permanent') return true;
   if(p.visibility === 'hidden') return false;
   return Date.now() < p.expiresAt;
 }
-function fmtDate(ts){ return new Date(ts).toLocaleString(); }
+function fmtDate(ts){ return new Date(ts).toLocaleString('en-US',{timeZone:'Asia/Dhaka',hour:'numeric',minute:'2-digit',hour12:true,day:'2-digit',month:'short',year:'numeric'}); }
 function fmtDur(ms){
   const s = Math.floor(ms/1000);
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
@@ -101,7 +120,7 @@ function renderExam(){
   el.innerHTML = visible.map(p => `
     <div class="card">
       <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
-      <p class="meta" style="color:var(--sub);font-size:13px;margin:6px 0 12px">Duration: ${p.duration} min</p>
+      <p class="meta" style="color:var(--sub);font-size:13px;margin:6px 0 12px">Duration: ${p.duration} min · Uploaded: ${fmtDate(p.uploadedAt)}</p>
       <label>Your name</label>
       <input type="text" id="ename-${p.id}" placeholder="Enter your full name">
       <button class="primary" onclick="startExam('${p.id}')">Start exam</button>
@@ -119,16 +138,57 @@ function startExam(id){
 function renderExamSession(){
   const el = document.getElementById('view-exam');
   const {p, name, start, durationMs} = activeExam;
+  document.body.classList.add('exam-active');
+  
+  // Added the highly visible warning message block below the timer
   el.innerHTML = `
     <div class="card">
       <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
       <p class="meta">Candidate: ${name}</p>
       <div class="timer" id="examTimer">--:--</div>
-      <iframe src="${p.data}" style="width:100%;height:520px;border:1px solid var(--border);border-radius:8px;margin-top:10px"></iframe>
+      
+      <div style="background: rgba(217, 83, 79, 0.1); border: 1px solid var(--danger); color: #ff8a80; padding: 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 12px; text-align: center; line-height: 1.5;">
+        ⚠️ <strong>CRITICAL WARNING:</strong> Do not refresh, reload, or navigate away from this page. Doing so will automatically end and submit your exam.
+      </div>
+
+      <div id="pdfViewer" style="width:100%;max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#1a1d24;padding:8px" oncontextmenu="return false"></div>
       <button class="primary danger" onclick="finishExam(false)">Submit / End exam</button>
     </div>`;
+  renderPdf(p.data);
   tick();
 }
+
+async function renderPdf(dataUrl){
+  const container = document.getElementById('pdfViewer');
+  container.innerHTML = '<div class="empty">Loading...</div>';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument(dataUrl).promise;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  container.innerHTML = '';
+
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    
+    const RENDER_SCALE = 3.5; 
+    const viewport = page.getViewport({scale: RENDER_SCALE});
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { alpha: false });
+    
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    canvas.style.display = 'block';
+    canvas.style.marginBottom = '12px';
+    canvas.style.backgroundColor = '#ffffff'; 
+    
+    await page.render({canvasContext: context, viewport}).promise;
+    container.appendChild(canvas);
+  }
+}
+
 let timerInt;
 function tick(){
   clearInterval(timerInt);
@@ -143,26 +203,55 @@ function tick(){
     t.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
   },1000);
 }
-async function finishExam(auto){
+async function finishExam(auto, reason){
   if(!activeExam) return;
-  const spent = Date.now() - activeExam.start;
-  logs.unshift({ name: activeExam.name, exam: activeExam.p.name, date: Date.now(), spentMs: spent });
-  await saveLogs();
+  const exam = activeExam;
   activeExam = null;
   clearInterval(timerInt);
-  alert(auto ? 'Time is up. Exam submitted.' : 'Exam submitted.');
+  document.body.classList.remove('exam-active');
+  const spent = Date.now() - exam.start;
+  await saveLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: exam.name, exam: exam.p.name, date: Date.now(), spentMs: spent });
+  alert(reason || (auto ? 'Time is up. Exam submitted.' : 'Exam submitted.'));
   renderExam();
-  renderDash();
 }
+
+// Also prompt the user with standard browser warning if they try to close/refresh tab manually
+window.addEventListener('beforeunload', (e) => {
+  if (activeExam) {
+    e.preventDefault();
+    e.returnValue = ''; // Trigger browser's native "Leave site?" warning
+  }
+});
+
+// Anti-cheat: end exam if tab loses focus/visibility (switching app/window)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden && activeExam) finishExam(true, 'Exam ended: you left the exam tab/window.');
+});
+window.addEventListener('blur', ()=>{
+  if(activeExam) finishExam(true, 'Exam ended: you switched away from the exam window.');
+});
+// Block common screenshot/devtools/copy shortcuts during exam
+document.addEventListener('keydown', e=>{
+  if(!activeExam) return;
+  const k = e.key;
+  if(k==='PrintScreen' || (e.ctrlKey && ['p','c','s','u'].includes(k.toLowerCase())) || (e.metaKey && k.toLowerCase()==='p') || k==='F12' || (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(k.toLowerCase()))){
+    e.preventDefault();
+  }
+});
+document.addEventListener('contextmenu', e=>{ if(activeExam) e.preventDefault(); });
 
 // ---------- DASHBOARD ----------
 function renderDash(){
   const el = document.getElementById('view-dash');
   if(!logs.length){ el.innerHTML = '<div class="card empty">No exam attempts yet.</div>'; return; }
   el.innerHTML = `<div class="card"><h2>Exam attempts</h2>
-  <table><thead><tr><th>Name</th><th>Exam</th><th>Date & time</th><th>Duration spent</th></tr></thead><tbody>
-  ${logs.map(l=>`<tr><td>${l.name}</td><td>${l.exam}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td></tr>`).join('')}
+  <table><thead><tr><th>Name</th><th>Exam</th><th>Date & time</th><th>Duration spent</th>${admin?'<th></th>':''}</tr></thead><tbody>
+  ${logs.map(l=>`<tr><td>${l.name}</td><td>${l.exam}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
   </tbody></table></div>`;
+}
+async function deleteLog(id){
+  if(!confirm('Delete this attendee record?')) return;
+  await db.ref('logs/'+id).remove();
 }
 
 // ---------- ADMIN ----------
@@ -238,13 +327,12 @@ function uploadPdf(){
   reader.onload = async function(e){
     const entry = {
       id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-      name, duration, data: e.target.result,
+      name, duration, data: e.target.result, uploadedAt: Date.now(),
       visibility: visType==='hidden' ? 'hidden' : (visType==='permanent' ? 'permanent' : 'timed'),
       expiresAt: visType==='timed' ? Date.now() + visMinutes*60000 : null
     };
     pdfs.unshift(entry);
     await savePdfs();
-    renderAdmin();
   };
   reader.readAsDataURL(file);
 }
@@ -252,14 +340,11 @@ async function setVisible(id, type){
   const p = pdfs.find(x=>x.id===id);
   p.visibility = type;
   if(type==='permanent') p.expiresAt = null;
-  await savePdfs();
-  renderAdmin();
+  await db.ref('pdfs/'+id).set(p);
 }
 async function deletePdf(id){
   if(!confirm('Delete this exam?')) return;
-  pdfs = pdfs.filter(x=>x.id!==id);
-  await savePdfs();
-  renderAdmin();
+  await db.ref('pdfs/'+id).remove();
 }
 
 // ---------- NAV ----------
@@ -275,7 +360,7 @@ document.querySelectorAll('.navbtn').forEach(b=>{
   };
 });
 
-(async function(){ await load(); renderExam(); renderDash(); renderAdmin(); })();
+load(); renderDash(); renderAdmin();
 </script>
 </body>
 </html>
