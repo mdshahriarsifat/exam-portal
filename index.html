@@ -1,366 +1,746 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exam Portal</title>
-<style>
-:root{--bg:#0f1115;--card:#171a21;--border:#2a2e38;--text:#e8e9ec;--sub:#9aa0ac;--accent:#5b8def;--accent2:#2f7d5f;--danger:#d9534f;--mono:'Courier New',monospace}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;line-height:1.5}
-.wrap{max-width:760px;margin:0 auto;padding:24px 16px;flex:1;width:100%}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px}
-h1{font-size:22px;font-weight:600;letter-spacing:.5px}
-nav{display:flex;gap:8px;flex-wrap:wrap}
-nav button{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
-nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
-.card h2{font-size:16px;margin-bottom:12px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;font-weight:600}
-label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
-input,select{width:100%;background:#0f1115;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:15px}
-input[type=file]{padding:8px}
-.row{display:flex;gap:10px;align-items:center}
-.row>*{flex:1}
-button.primary{background:var(--accent);border:none;color:#fff;padding:11px 18px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;margin-top:14px}
-button.primary:hover{opacity:.9}
-button.small{background:var(--border);border:none;color:var(--text);padding:7px 12px;border-radius:6px;font-size:13px;cursor:pointer}
-button.danger{background:var(--danger)}
-button.green{background:var(--accent2)}
-.pdf-item{display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;flex-wrap:wrap;gap:8px}
-.pdf-item .meta{font-size:13px;color:var(--sub)}
-.badge{font-size:11px;padding:3px 8px;border-radius:5px;font-weight:600}
-.badge.open{background:#1f3a2a;color:#7ee8a0}
-.badge.locked{background:#3a1f1f;color:#f08080}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--border)}
-th{color:var(--sub);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
-.hidden{display:none!important}
-.timer{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent);text-align:center;margin:10px 0}
-.empty{color:var(--sub);text-align:center;padding:30px 0;font-size:14px}
-footer{text-align:center;padding:18px;font-size:13px;color:var(--sub);border-top:1px solid var(--border)}
-footer a{color:var(--accent);text-decoration:none}
-.err{color:var(--danger);font-size:13px;margin-top:6px}
-.exam-active{user-select:none;-webkit-user-select:none}
-.exam-active img,.exam-active canvas{pointer-events:none}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Portal</title>
+    <style>
+        :root {
+            --bg: #0f1115;
+            --card: #171a21;
+            --border: #2a2e38;
+            --text: #e8e9ec;
+            --sub: #9aa0ac;
+            --accent: #5b8def;
+            --accent2: #2f7d5f;
+            --danger: #d9534f;
+            --mono: 'Courier New', monospace
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+        body {
+            font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5
+        }
+        .wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            flex: 1;
+            width: 100%
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: .5px
+        }
+        nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+        nav button {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px
+        }
+        nav button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px
+        }
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--sub);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--sub);
+            margin: 10px 0 4px
+        }
+        input,
+        select {
+            width: 100%;
+            background: #0f1115;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 15px
+        }
+        input[type=file] {
+            padding: 8px
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+        .row>* {
+            flex: 1
+        }
+        button.primary {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            padding: 11px 18px;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 14px
+        }
+        button.primary:hover {
+            opacity: .9
+        }
+        button.small {
+            background: var(--border);
+            border: none;
+            color: var(--text);
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer
+        }
+        button.danger {
+            background: var(--danger)
+        }
+        button.green {
+            background: var(--accent2)
+        }
+        .pdf-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+        .pdf-item .meta {
+            font-size: 13px;
+            color: var(--sub)
+        }
+        .badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: 600
+        }
+        .badge.open {
+            background: #1f3a2a;
+            color: #7ee8a0
+        }
+        .badge.locked {
+            background: #3a1f1f;
+            color: #f08080
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px
+        }
+        th,
+        td {
+            text-align: left;
+            padding: 10px 6px;
+            border-bottom: 1px solid var(--border)
+        }
+        th {
+            color: var(--sub);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+        .hidden {
+            display: none !important
+        }
+        .timer {
+            font-family: var(--mono);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+            text-align: center;
+            margin: 10px 0
+        }
+        .empty {
+            color: var(--sub);
+            text-align: center;
+            padding: 30px 0;
+            font-size: 14px
+        }
+        footer {
+            text-align: center;
+            padding: 18px;
+            font-size: 13px;
+            color: var(--sub);
+            border-top: 1px solid var(--border)
+        }
+        footer a {
+            color: var(--accent);
+            text-decoration: none
+        }
+        .err {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 6px
+        }
+        .exam-active {
+            user-select: none;
+            -webkit-user-select: none
+        }
+        .exam-active img,
+        .exam-active canvas {
+            pointer-events: none
+        }
+
+        /* filter bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+        .filter-bar label {
+            margin: 0;
+            font-size: 13px;
+            color: var(--sub);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-bar select {
+            width: auto;
+            min-width: 140px;
+            background: var(--bg);
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .filter-bar .class-badge {
+            background: var(--border);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--sub);
+        }
+        .filter-bar .count-badge {
+            color: var(--sub);
+            font-size: 13px;
+            margin-left: auto;
+        }
+        @media (max-width: 500px) {
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-bar select {
+                width: 100%;
+            }
+            .filter-bar .count-badge {
+                margin-left: 0;
+                text-align: right;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="wrap">
-<header>
-  <h1>Exam Portal</h1>
-  <nav>
-    <button class="navbtn active" data-v="exam">Exams</button>
-    <button class="navbtn" data-v="dash">Dashboard</button>
-    <button class="navbtn" data-v="admin">Admin</button>
-  </nav>
-</header>
+    <div class="wrap">
+        <header>
+            <h1>Exam Portal</h1>
+            <nav>
+                <button class="navbtn active" data-v="exam">Exams</button>
+                <button class="navbtn" data-v="dash">Dashboard</button>
+                <button class="navbtn" data-v="admin">Admin</button>
+            </nav>
+        </header>
 
-<div id="view-exam"></div>
-<div id="view-dash" class="hidden"></div>
-<div id="view-admin" class="hidden"></div>
+        <div id="view-exam"></div>
+        <div id="view-dash" class="hidden"></div>
+        <div id="view-admin" class="hidden"></div>
 
-</div>
-<footer>
-  Created by <a href="https://sites.google.com/view/mdshahriarsifat" target="_blank">Md Shahriar Sifat</a>
-</footer>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-// === FIREBASE CONFIG: replace with your own project's config ===
-const firebaseConfig = {
-  apiKey: "AIzaSyBBEuqHTnmarX-mpmmd41zpg7M7v2gAzic",
-  authDomain: "exam-portal-sifat.firebaseapp.com",
-  databaseURL: "https://exam-portal-sifat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "exam-portal-sifat",
-  storageBucket: "exam-portal-sifat.firebasestorage.app",
-  messagingSenderId: "942351859035",
-  appId: "1:942351859035:web:64381824bdf73f2ea82e7e",
-  measurementId: "G-49K6C5XCWR"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-const ADMIN_HASH = "468e585a8224649006ac55def8637907cda2b4a821ba6b02860eefe1959f2db0";
-let admin = false;
-async function sha256(s){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-let pdfs = [];
-let logs = [];
-let activeExam = null;
-
-function load(){
-  db.ref('pdfs').on('value', s=>{ pdfs = s.val() ? Object.values(s.val()) : []; renderExam(); renderAdmin(); });
-  db.ref('logs').on('value', s=>{ logs = s.val() ? Object.values(s.val()).sort((a,b)=>b.date-a.date) : []; renderDash(); });
-}
-async function savePdfs(){ const obj={}; pdfs.forEach(p=>obj[p.id]=p); await db.ref('pdfs').set(obj); }
-async function saveLog(entry){ await db.ref('logs/'+entry.id).set(entry); }
-
-function isVisible(p){
-  if(p.visibility === 'permanent') return true;
-  if(p.visibility === 'hidden') return false;
-  return Date.now() < p.expiresAt;
-}
-function fmtDate(ts){ return new Date(ts).toLocaleString('en-US',{timeZone:'Asia/Dhaka',hour:'numeric',minute:'2-digit',hour12:true,day:'2-digit',month:'short',year:'numeric'}); }
-function fmtDur(ms){
-  const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
-  return (h?h+'h ':'')+(m?m+'m ':'')+sec+'s';
-}
-
-// ---------- EXAM VIEW ----------
-function renderExam(){
-  const el = document.getElementById('view-exam');
-  if(activeExam){ renderExamSession(); return; }
-  const visible = pdfs.filter(isVisible);
-  if(!visible.length){ el.innerHTML = '<div class="card empty">No exams are currently available.</div>'; return; }
-  el.innerHTML = visible.map(p => `
-    <div class="card">
-      <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
-      <p class="meta" style="color:var(--sub);font-size:13px;margin:6px 0 12px">Duration: ${p.duration} min · Uploaded: ${fmtDate(p.uploadedAt)}</p>
-      <label>Your name</label>
-      <input type="text" id="ename-${p.id}" placeholder="Enter your full name">
-      <button class="primary" onclick="startExam('${p.id}')">Start exam</button>
-    </div>`).join('');
-}
-
-function startExam(id){
-  const p = pdfs.find(x=>x.id===id);
-  const name = document.getElementById('ename-'+id).value.trim();
-  if(!name){ alert('Please enter your name'); return; }
-  activeExam = { p, name, start: Date.now(), durationMs: p.duration*60000 };
-  renderExamSession();
-}
-
-function renderExamSession(){
-  const el = document.getElementById('view-exam');
-  const {p, name, start, durationMs} = activeExam;
-  document.body.classList.add('exam-active');
-  
-  // Added the highly visible warning message block below the timer
-  el.innerHTML = `
-    <div class="card">
-      <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
-      <p class="meta">Candidate: ${name}</p>
-      <div class="timer" id="examTimer">--:--</div>
-      
-      <div style="background: rgba(217, 83, 79, 0.1); border: 1px solid var(--danger); color: #ff8a80; padding: 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 12px; text-align: center; line-height: 1.5;">
-        ⚠️ <strong>CRITICAL WARNING:</strong> Do not refresh, reload, or navigate away from this page. Doing so will automatically end and submit your exam.
-      </div>
-
-      <div id="pdfViewer" style="width:100%;max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#1a1d24;padding:8px" oncontextmenu="return false"></div>
-      <button class="primary danger" onclick="finishExam(false)">Submit / End exam</button>
-    </div>`;
-  renderPdf(p.data);
-  tick();
-}
-
-async function renderPdf(dataUrl){
-  const container = document.getElementById('pdfViewer');
-  container.innerHTML = '<div class="empty">Loading...</div>';
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const pdf = await pdfjsLib.getDocument(dataUrl).promise;
-  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-  container.innerHTML = '';
-
-  for(let i=1;i<=pdf.numPages;i++){
-    const page = await pdf.getPage(i);
-    
-    const RENDER_SCALE = 3.5; 
-    const viewport = page.getViewport({scale: RENDER_SCALE});
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d', { alpha: false });
-    
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    
-    canvas.style.width = '100%';
-    canvas.style.height = 'auto';
-    canvas.style.display = 'block';
-    canvas.style.marginBottom = '12px';
-    canvas.style.backgroundColor = '#ffffff'; 
-    
-    await page.render({canvasContext: context, viewport}).promise;
-    container.appendChild(canvas);
-  }
-}
-
-let timerInt;
-function tick(){
-  clearInterval(timerInt);
-  timerInt = setInterval(()=>{
-    if(!activeExam) return clearInterval(timerInt);
-    const elapsed = Date.now() - activeExam.start;
-    const remain = activeExam.durationMs - elapsed;
-    const t = document.getElementById('examTimer');
-    if(!t) return clearInterval(timerInt);
-    if(remain <= 0){ t.textContent = "Time's up!"; clearInterval(timerInt); finishExam(true); return; }
-    const m = Math.floor(remain/60000), s = Math.floor((remain%60000)/1000);
-    t.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-  },1000);
-}
-async function finishExam(auto, reason){
-  if(!activeExam) return;
-  const exam = activeExam;
-  activeExam = null;
-  clearInterval(timerInt);
-  document.body.classList.remove('exam-active');
-  const spent = Date.now() - exam.start;
-  await saveLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: exam.name, exam: exam.p.name, date: Date.now(), spentMs: spent });
-  alert(reason || (auto ? 'Time is up. Exam submitted.' : 'Exam submitted.'));
-  renderExam();
-}
-
-// Also prompt the user with standard browser warning if they try to close/refresh tab manually
-window.addEventListener('beforeunload', (e) => {
-  if (activeExam) {
-    e.preventDefault();
-    e.returnValue = ''; // Trigger browser's native "Leave site?" warning
-  }
-});
-
-// Anti-cheat: end exam if tab loses focus/visibility (switching app/window)
-document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && activeExam) finishExam(true, 'Exam ended: you left the exam tab/window.');
-});
-window.addEventListener('blur', ()=>{
-  if(activeExam) finishExam(true, 'Exam ended: you switched away from the exam window.');
-});
-// Block common screenshot/devtools/copy shortcuts during exam
-document.addEventListener('keydown', e=>{
-  if(!activeExam) return;
-  const k = e.key;
-  if(k==='PrintScreen' || (e.ctrlKey && ['p','c','s','u'].includes(k.toLowerCase())) || (e.metaKey && k.toLowerCase()==='p') || k==='F12' || (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(k.toLowerCase()))){
-    e.preventDefault();
-  }
-});
-document.addEventListener('contextmenu', e=>{ if(activeExam) e.preventDefault(); });
-
-// ---------- DASHBOARD ----------
-function renderDash(){
-  const el = document.getElementById('view-dash');
-  if(!logs.length){ el.innerHTML = '<div class="card empty">No exam attempts yet.</div>'; return; }
-  el.innerHTML = `<div class="card"><h2>Exam attempts</h2>
-  <table><thead><tr><th>Name</th><th>Exam</th><th>Date & time</th><th>Duration spent</th>${admin?'<th></th>':''}</tr></thead><tbody>
-  ${logs.map(l=>`<tr><td>${l.name}</td><td>${l.exam}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
-  </tbody></table></div>`;
-}
-async function deleteLog(id){
-  if(!confirm('Delete this attendee record?')) return;
-  await db.ref('logs/'+id).remove();
-}
-
-// ---------- ADMIN ----------
-function renderAdmin(){
-  const el = document.getElementById('view-admin');
-  if(!admin){
-    el.innerHTML = `<div class="card"><h2>Admin login</h2>
-      <label>Password</label>
-      <input type="password" id="adminPass">
-      <div id="adminErr" class="err"></div>
-      <button class="primary" onclick="adminLogin()">Login</button></div>`;
-    return;
-  }
-  el.innerHTML = `
-    <div class="card">
-      <h2>Upload PDF</h2>
-      <label>Exam name</label>
-      <input type="text" id="upName" placeholder="e.g. Midterm 2026">
-      <label>Exam duration (minutes, for candidates)</label>
-      <input type="number" id="upDuration" value="60" min="1">
-      <label>Visibility</label>
-      <div class="row">
-        <select id="visType">
-          <option value="permanent">Permanent (always visible)</option>
-          <option value="timed">Timed (hide after duration)</option>
-          <option value="hidden">Hidden (admin only)</option>
-        </select>
-        <input type="number" id="visMinutes" placeholder="Minutes visible" value="60" min="1">
-      </div>
-      <label>PDF file</label>
-      <input type="file" id="upFile" accept="application/pdf">
-      <button class="primary" onclick="uploadPdf()">Upload</button>
-      <div id="upErr" class="err"></div>
     </div>
-    <div class="card">
-      <h2>Manage exams</h2>
-      ${pdfs.length ? pdfs.map(p=>`
-        <div class="pdf-item">
-          <div>
-            <strong>${p.name}</strong>
-            <div class="meta">Duration ${p.duration}min · ${p.visibility==='permanent'?'Permanent':p.visibility==='hidden'?'Hidden':'Visible until '+fmtDate(p.expiresAt)}
-            <span class="badge ${isVisible(p)?'open':'locked'}">${isVisible(p)?'Visible':'Hidden'}</span></div>
-          </div>
-          <div class="row" style="flex:none;gap:6px">
-            <button class="small green" onclick="setVisible('${p.id}','permanent')">Permanent</button>
-            <button class="small" onclick="setVisible('${p.id}','hidden')">Hide</button>
-            <button class="small danger" onclick="deletePdf('${p.id}')">Delete</button>
-          </div>
-        </div>`).join('') : '<div class="empty">No exams uploaded yet.</div>'}
-    </div>
-    <button class="small" onclick="adminLogout()">Logout</button>`;
-}
+    <footer>
+        Created by <a href="https://sites.google.com/view/mdshahriarsifat" target="_blank">Md Shahriar Sifat</a>
+    </footer>
 
-async function adminLogin(){
-  const v = document.getElementById('adminPass').value;
-  if(await sha256(v) === ADMIN_HASH){ admin = true; renderAdmin(); }
-  else document.getElementById('adminErr').textContent = 'Incorrect password';
-}
-function adminLogout(){ admin = false; renderAdmin(); }
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
+    </script>
+    <script>
+        // === FIREBASE CONFIG: replace with your own project's config ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyBBEuqHTnmarX-mpmmd41zpg7M7v2gAzic",
+            authDomain: "exam-portal-sifat.firebaseapp.com",
+            databaseURL: "https://exam-portal-sifat-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "exam-portal-sifat",
+            storageBucket: "exam-portal-sifat.firebasestorage.app",
+            messagingSenderId: "942351859035",
+            appId: "1:942351859035:web:64381824bdf73f2ea82e7e",
+            measurementId: "G-49K6C5XCWR"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-function uploadPdf(){
-  const name = document.getElementById('upName').value.trim();
-  const duration = parseInt(document.getElementById('upDuration').value);
-  const visType = document.getElementById('visType').value;
-  const visMinutes = parseInt(document.getElementById('visMinutes').value);
-  const file = document.getElementById('upFile').files[0];
-  const err = document.getElementById('upErr');
-  err.textContent = '';
-  if(!name || !duration || !file){ err.textContent = 'Please fill all fields and choose a PDF.'; return; }
-  if(visType==='timed' && !visMinutes){ err.textContent = 'Enter visibility minutes.'; return; }
-  if(file.size > 4.5*1024*1024){ err.textContent = 'File too large (max ~4.5MB for storage).'; return; }
-  const reader = new FileReader();
-  reader.onload = async function(e){
-    const entry = {
-      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-      name, duration, data: e.target.result, uploadedAt: Date.now(),
-      visibility: visType==='hidden' ? 'hidden' : (visType==='permanent' ? 'permanent' : 'timed'),
-      expiresAt: visType==='timed' ? Date.now() + visMinutes*60000 : null
-    };
-    pdfs.unshift(entry);
-    await savePdfs();
-  };
-  reader.readAsDataURL(file);
-}
-async function setVisible(id, type){
-  const p = pdfs.find(x=>x.id===id);
-  p.visibility = type;
-  if(type==='permanent') p.expiresAt = null;
-  await db.ref('pdfs/'+id).set(p);
-}
-async function deletePdf(id){
-  if(!confirm('Delete this exam?')) return;
-  await db.ref('pdfs/'+id).remove();
-}
+        const ADMIN_HASH = "468e585a8224649006ac55def8637907cda2b4a821ba6b02860eefe1959f2db0";
+        let admin = false;
+        async function sha256(s) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        let pdfs = [];
+        let logs = [];
+        let activeExam = null;
 
-// ---------- NAV ----------
-document.querySelectorAll('.navbtn').forEach(b=>{
-  b.onclick = ()=>{
-    document.querySelectorAll('.navbtn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    ['exam','dash','admin'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden'));
-    document.getElementById('view-'+b.dataset.v).classList.remove('hidden');
-    if(b.dataset.v==='exam') renderExam();
-    if(b.dataset.v==='dash') renderDash();
-    if(b.dataset.v==='admin') renderAdmin();
-  };
-});
+        // filter state
+        let classFilterExam = 'all';
+        let classFilterDash = 'all';
 
-load(); renderDash(); renderAdmin();
-</script>
+        function load() {
+            db.ref('pdfs').on('value', s => {
+                const val = s.val();
+                pdfs = val ? Object.values(val) : [];
+                renderExam();
+                renderAdmin();
+                renderDash();
+            });
+            db.ref('logs').on('value', s => {
+                const val = s.val();
+                logs = val ? Object.values(val).sort((a, b) => b.date - a.date) : [];
+                renderDash();
+            });
+        }
+        async function savePdfs() { const obj = {};
+            pdfs.forEach(p => obj[p.id] = p); await db.ref('pdfs').set(obj); }
+        async function saveLog(entry) { await db.ref('logs/' + entry.id).set(entry); }
+
+        function isVisible(p) {
+            if (p.visibility === 'permanent') return true;
+            if (p.visibility === 'hidden') return false;
+            return Date.now() < p.expiresAt;
+        }
+        function fmtDate(ts) { return new Date(ts).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric',
+                minute: '2-digit', hour12: true, day: '2-digit', month: 'short', year: 'numeric' }); }
+        function fmtDur(ms) {
+            const s = Math.floor(ms / 1000);
+            const h = Math.floor(s / 3600),
+                m = Math.floor((s % 3600) / 60),
+                sec = s % 60;
+            return (h ? h + 'h ' : '') + (m ? m + 'm ' : '') + sec + 's';
+        }
+
+        // ---------- get unique classes from pdfs ----------
+        function getUniqueClasses(exams) {
+            const set = new Set();
+            exams.forEach(p => { if (p.class && p.class.trim()) set.add(p.class.trim()); });
+            return Array.from(set).sort();
+        }
+
+        // ---------- EXAM VIEW ----------
+        function renderExam() {
+            const el = document.getElementById('view-exam');
+            if (activeExam) { renderExamSession(); return; }
+
+            // visible + sort by newest first
+            let visible = pdfs.filter(isVisible);
+            visible.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+
+            const classes = getUniqueClasses(visible);
+            const hasFilter = classFilterExam !== 'all';
+
+            // apply class filter
+            let filtered = visible;
+            if (hasFilter) {
+                filtered = visible.filter(p => (p.class || '').trim() === classFilterExam);
+            }
+
+            // build filter dropdown
+            let filterHtml = `
+            <div class="filter-bar">
+              <label>📂 Class:
+                <select id="classFilterExam" onchange="onClassFilterExamChange(this.value)">
+                  <option value="all">All classes</option>
+                  ${classes.map(c => `<option value="${c}" ${classFilterExam === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+              </label>
+              <span class="count-badge">${filtered.length} exam${filtered.length!==1?'s':''} available</span>
+            </div>
+          `;
+
+            if (!visible.length) {
+                el.innerHTML = filterHtml + '<div class="card empty">No exams are currently available.</div>';
+                return;
+            }
+
+            if (!filtered.length) {
+                el.innerHTML = filterHtml + `<div class="card empty">No exams found for class "${classFilterExam}".</div>`;
+                return;
+            }
+
+            el.innerHTML = filterHtml + filtered.map(p => `
+            <div class="card">
+              <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 10px;font-size:13px;color:var(--sub)">
+                <span>📚 ${p.class || 'General'}</span>
+                <span>⏱ ${p.duration} min</span>
+                <span>📅 ${fmtDate(p.uploadedAt)}</span>
+              </div>
+              <label>Your name</label>
+              <input type="text" id="ename-${p.id}" placeholder="Enter your full name">
+              <button class="primary" onclick="startExam('${p.id}')">Start exam</button>
+            </div>`).join('');
+        }
+
+        function onClassFilterExamChange(val) {
+            classFilterExam = val;
+            renderExam();
+        }
+
+        function startExam(id) {
+            const p = pdfs.find(x => x.id === id);
+            const name = document.getElementById('ename-' + id).value.trim();
+            if (!name) { alert('Please enter your name'); return; }
+            activeExam = { p, name, start: Date.now(), durationMs: p.duration * 60000 };
+            renderExamSession();
+        }
+
+        function renderExamSession() {
+            const el = document.getElementById('view-exam');
+            const { p, name, start, durationMs } = activeExam;
+            document.body.classList.add('exam-active');
+
+            el.innerHTML = `
+            <div class="card">
+              <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
+              <p class="meta" style="color:var(--sub);font-size:13px">👤 ${name}  ·  📚 ${p.class || 'General'}  ·  ⏱ ${p.duration} min</p>
+              <div class="timer" id="examTimer">--:--</div>
+
+              <div style="background: rgba(217, 83, 79, 0.1); border: 1px solid var(--danger); color: #ff8a80; padding: 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 12px; text-align: center; line-height: 1.5;">
+                ⚠️ <strong>CRITICAL WARNING:</strong> Do not refresh, reload, or navigate away from this page. Doing so will automatically end and submit your exam.
+              </div>
+
+              <div id="pdfViewer" style="width:100%;max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#1a1d24;padding:8px" oncontextmenu="return false"></div>
+              <button class="primary danger" onclick="finishExam(false)">Submit / End exam</button>
+            </div>`;
+            renderPdf(p.data);
+            tick();
+        }
+
+        async function renderPdf(dataUrl) {
+            const container = document.getElementById('pdfViewer');
+            container.innerHTML = '<div class="empty">Loading...</div>';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            const pdf = await pdfjsLib.getDocument(dataUrl).promise;
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            container.innerHTML = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const RENDER_SCALE = 3.5;
+                const viewport = page.getViewport({ scale: RENDER_SCALE });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d', { alpha: false });
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+                canvas.style.display = 'block';
+                canvas.style.marginBottom = '12px';
+                canvas.style.backgroundColor = '#ffffff';
+                await page.render({ canvasContext: context, viewport }).promise;
+                container.appendChild(canvas);
+            }
+        }
+
+        let timerInt;
+
+        function tick() {
+            clearInterval(timerInt);
+            timerInt = setInterval(() => {
+                if (!activeExam) return clearInterval(timerInt);
+                const elapsed = Date.now() - activeExam.start;
+                const remain = activeExam.durationMs - elapsed;
+                const t = document.getElementById('examTimer');
+                if (!t) return clearInterval(timerInt);
+                if (remain <= 0) { t.textContent = "Time's up!";
+                    clearInterval(timerInt);
+                    finishExam(true); return; }
+                const m = Math.floor(remain / 60000),
+                    s = Math.floor((remain % 60000) / 1000);
+                t.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            }, 1000);
+        }
+
+        async function finishExam(auto, reason) {
+            if (!activeExam) return;
+            const exam = activeExam;
+            activeExam = null;
+            clearInterval(timerInt);
+            document.body.classList.remove('exam-active');
+            const spent = Date.now() - exam.start;
+            await saveLog({
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                name: exam.name,
+                exam: exam.p.name,
+                class: exam.p.class || 'General',
+                date: Date.now(),
+                spentMs: spent
+            });
+            alert(reason || (auto ? 'Time is up. Exam submitted.' : 'Exam submitted.'));
+            renderExam();
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+            if (activeExam) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && activeExam) finishExam(true, 'Exam ended: you left the exam tab/window.');
+        });
+        window.addEventListener('blur', () => {
+            if (activeExam) finishExam(true, 'Exam ended: you switched away from the exam window.');
+        });
+
+        document.addEventListener('keydown', e => {
+            if (!activeExam) return;
+            const k = e.key;
+            if (k === 'PrintScreen' || (e.ctrlKey && ['p', 'c', 's', 'u'].includes(k.toLowerCase())) || (e.metaKey && k
+                    .toLowerCase() === 'p') || k === 'F12' || (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(k
+                    .toLowerCase()))) {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('contextmenu', e => { if (activeExam) e.preventDefault(); });
+
+        // ---------- DASHBOARD ----------
+        function renderDash() {
+            const el = document.getElementById('view-dash');
+
+            // get unique classes from logs (and also from pdfs for consistency)
+            const allClasses = getUniqueClasses(pdfs);
+            const logClasses = new Set();
+            logs.forEach(l => { if (l.class && l.class.trim()) logClasses.add(l.class.trim()); });
+            const unionClasses = Array.from(new Set([...allClasses, ...logClasses])).sort();
+
+            const hasFilter = classFilterDash !== 'all';
+            let filteredLogs = logs;
+            if (hasFilter) {
+                filteredLogs = logs.filter(l => (l.class || '').trim() === classFilterDash);
+            }
+
+            let filterHtml = `
+            <div class="filter-bar">
+              <label>📂 Class:
+                <select id="classFilterDash" onchange="onClassFilterDashChange(this.value)">
+                  <option value="all">All classes</option>
+                  ${unionClasses.map(c => `<option value="${c}" ${classFilterDash === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+              </label>
+              <span class="count-badge">${filteredLogs.length} attempt${filteredLogs.length!==1?'s':''}</span>
+            </div>
+          `;
+
+            if (!logs.length) {
+                el.innerHTML = filterHtml + '<div class="card empty">No exam attempts yet.</div>';
+                return;
+            }
+
+            if (!filteredLogs.length) {
+                el.innerHTML = filterHtml + `<div class="card empty">No attempts found for class "${classFilterDash}".</div>`;
+                return;
+            }
+
+            el.innerHTML = filterHtml + `<div class="card"><h2>Exam attempts</h2>
+            <table><thead><tr><th>Name</th><th>Exam</th><th>Class</th><th>Date & time</th><th>Duration spent</th>${admin?'<th></th>':''}</tr></thead><tbody>
+            ${filteredLogs.map(l => `<tr><td>${l.name}</td><td>${l.exam}</td><td>${l.class || 'General'}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
+            </tbody></table></div>`;
+        }
+
+        function onClassFilterDashChange(val) {
+            classFilterDash = val;
+            renderDash();
+        }
+
+        async function deleteLog(id) {
+            if (!confirm('Delete this attendee record?')) return;
+            await db.ref('logs/' + id).remove();
+        }
+
+        // ---------- ADMIN ----------
+        function renderAdmin() {
+            const el = document.getElementById('view-admin');
+            if (!admin) {
+                el.innerHTML = `<div class="card"><h2>Admin login</h2>
+              <label>Password</label>
+              <input type="password" id="adminPass">
+              <div id="adminErr" class="err"></div>
+              <button class="primary" onclick="adminLogin()">Login</button></div>`;
+                return;
+            }
+            el.innerHTML = `
+            <div class="card">
+              <h2>Upload PDF</h2>
+              <label>Exam name</label>
+              <input type="text" id="upName" placeholder="e.g. Midterm 2026">
+              <label>Class / section</label>
+              <input type="text" id="upClass" placeholder="e.g. 10A, 12B, General" value="General">
+              <label>Exam duration (minutes, for candidates)</label>
+              <input type="number" id="upDuration" value="60" min="1">
+              <label>Visibility</label>
+              <div class="row">
+                <select id="visType">
+                  <option value="permanent">Permanent (always visible)</option>
+                  <option value="timed">Timed (hide after duration)</option>
+                  <option value="hidden">Hidden (admin only)</option>
+                </select>
+                <input type="number" id="visMinutes" placeholder="Minutes visible" value="60" min="1">
+              </div>
+              <label>PDF file</label>
+              <input type="file" id="upFile" accept="application/pdf">
+              <button class="primary" onclick="uploadPdf()">Upload</button>
+              <div id="upErr" class="err"></div>
+            </div>
+            <div class="card">
+              <h2>Manage exams</h2>
+              ${pdfs.length ? pdfs.map(p => `
+                <div class="pdf-item">
+                  <div>
+                    <strong>${p.name}</strong>
+                    <div class="meta">📚 ${p.class || 'General'} · ⏱ ${p.duration}min · ${p.visibility==='permanent'?'Permanent':p.visibility==='hidden'?'Hidden':'Visible until '+fmtDate(p.expiresAt)}
+                    <span class="badge ${isVisible(p)?'open':'locked'}">${isVisible(p)?'Visible':'Hidden'}</span></div>
+                  </div>
+                  <div class="row" style="flex:none;gap:6px">
+                    <button class="small green" onclick="setVisible('${p.id}','permanent')">Permanent</button>
+                    <button class="small" onclick="setVisible('${p.id}','hidden')">Hide</button>
+                    <button class="small danger" onclick="deletePdf('${p.id}')">Delete</button>
+                  </div>
+                </div>`).join('') : '<div class="empty">No exams uploaded yet.</div>'}
+            </div>
+            <button class="small" onclick="adminLogout()">Logout</button>`;
+        }
+
+        async function adminLogin() {
+            const v = document.getElementById('adminPass').value;
+            if (await sha256(v) === ADMIN_HASH) { admin = true;
+                renderAdmin(); } else document.getElementById('adminErr').textContent = 'Incorrect password';
+        }
+
+        function adminLogout() { admin = false;
+            renderAdmin(); }
+
+        function uploadPdf() {
+            const name = document.getElementById('upName').value.trim();
+            const cls = document.getElementById('upClass').value.trim() || 'General';
+            const duration = parseInt(document.getElementById('upDuration').value);
+            const visType = document.getElementById('visType').value;
+            const visMinutes = parseInt(document.getElementById('visMinutes').value);
+            const file = document.getElementById('upFile').files[0];
+            const err = document.getElementById('upErr');
+            err.textContent = '';
+            if (!name || !duration || !file) { err.textContent = 'Please fill all fields and choose a PDF.'; return; }
+            if (visType === 'timed' && !visMinutes) { err.textContent = 'Enter visibility minutes.'; return; }
+            if (file.size > 4.5 * 1024 * 1024) { err.textContent = 'File too large (max ~4.5MB for storage).'; return; }
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const entry = {
+                    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                    name,
+                    class: cls,
+                    duration,
+                    data: e.target.result,
+                    uploadedAt: Date.now(),
+                    visibility: visType === 'hidden' ? 'hidden' : (visType === 'permanent' ? 'permanent' : 'timed'),
+                    expiresAt: visType === 'timed' ? Date.now() + visMinutes * 60000 : null
+                };
+                pdfs.unshift(entry);
+                await savePdfs();
+                // reset filter to 'all' after upload so new exam appears
+                classFilterExam = 'all';
+                classFilterDash = 'all';
+                renderExam();
+                renderDash();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function setVisible(id, type) {
+            const p = pdfs.find(x => x.id === id);
+            p.visibility = type;
+            if (type === 'permanent') p.expiresAt = null;
+            await db.ref('pdfs/' + id).set(p);
+        }
+
+        async function deletePdf(id) {
+            if (!confirm('Delete this exam?')) return;
+            await db.ref('pdfs/' + id).remove();
+        }
+
+        // ---------- NAV ----------
+        document.querySelectorAll('.navbtn').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                ['exam', 'dash', 'admin'].forEach(v => document.getElementById('view-' + v).classList.add('hidden'));
+                document.getElementById('view-' + b.dataset.v).classList.remove('hidden');
+                if (b.dataset.v === 'exam') renderExam();
+                if (b.dataset.v === 'dash') renderDash();
+                if (b.dataset.v === 'admin') renderAdmin();
+            };
+        });
+
+        load();
+        renderDash();
+        renderAdmin();
+    </script>
 </body>
 </html>
