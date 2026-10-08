@@ -224,8 +224,7 @@
             user-select: none;
             -webkit-user-select: none
         }
-        .exam-active img,
-        .exam-active canvas {
+        .exam-active img {
             pointer-events: none
         }
 
@@ -390,6 +389,8 @@
 
             // visible + sort by newest first
             let visible = pdfs.filter(isVisible);
+            const sharedId = new URLSearchParams(location.search).get('exam');
+            if (sharedId) visible = visible.filter(p => p.id === sharedId);
             visible.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
 
             const classes = getUniqueClasses(visible);
@@ -426,7 +427,10 @@
 
             el.innerHTML = filterHtml + filtered.map(p => `
             <div class="card">
-              <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px;margin:0">${p.name}</h2>
+                <button onclick="shareExam('${p.id}')" style="width:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:0;border-radius:999px;background:#e8effd;color:#1f2937;font-size:14px;font-weight:500;cursor:pointer;margin:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+              </div>
               <div style="display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 10px;font-size:13px;color:var(--sub)">
                 <span>📚 ${p.class || 'General'}</span>
                 <span>⏱ ${p.duration} min</span>
@@ -435,6 +439,7 @@
               <label>Your name</label>
               <input type="text" id="ename-${p.id}" placeholder="Enter your full name">
               <button class="primary" onclick="startExam('${p.id}')">Start exam</button>
+              ${sharedId ? `<a href="${location.pathname}" style="display:block;text-align:center;margin-top:8px;font-size:13px">Show all exams</a>` : ''}
             </div>`).join('');
         }
 
@@ -455,6 +460,7 @@
             const el = document.getElementById('view-exam');
             const { p, name, start, durationMs } = activeExam;
             document.body.classList.add('exam-active');
+            zoom = 1;
 
             el.innerHTML = `
             <div class="card">
@@ -466,7 +472,13 @@
                 ⚠️ <strong>CRITICAL WARNING:</strong> Do not refresh, reload, or navigate away from this page. Doing so will automatically end and submit your exam.
               </div>
 
-              <div id="pdfViewer" style="width:100%;max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#1a1d24;padding:8px" oncontextmenu="return false"></div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+                <button type="button" onclick="applyZoom(zoom/1.25)" style="width:auto;padding:6px 14px;margin:0">−</button>
+                <span id="zoomLbl" style="min-width:48px;text-align:center;color:var(--sub);font-size:13px">100%</span>
+                <button type="button" onclick="applyZoom(zoom*1.25)" style="width:auto;padding:6px 14px;margin:0">+</button>
+                <button type="button" onclick="applyZoom(1)" style="width:auto;padding:6px 14px;margin:0">Reset</button>
+              </div>
+              <div id="pdfViewer" style="width:100%;max-height:520px;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px;background:#1a1d24;padding:8px" oncontextmenu="return false"></div>
               <button class="primary danger" onclick="finishExam(false)">Submit / End exam</button>
             </div>`;
             renderPdf(p.data);
@@ -489,11 +501,12 @@
                 const context = canvas.getContext('2d', { alpha: false });
                 canvas.width = Math.floor(viewport.width);
                 canvas.height = Math.floor(viewport.height);
-                canvas.style.width = '100%';
+                canvas.style.width = (zoom * 100) + '%';
                 canvas.style.height = 'auto';
                 canvas.style.display = 'block';
                 canvas.style.marginBottom = '12px';
                 canvas.style.backgroundColor = '#ffffff';
+                
                 await page.render({ canvasContext: context, viewport }).promise;
                 container.appendChild(canvas);
             }
@@ -677,7 +690,6 @@
 
         function adminLogout() { admin = false;
             renderAdmin(); }
-
         function uploadPdf() {
             const name = document.getElementById('upName').value.trim();
             const cls = document.getElementById('upClass').value.trim() || 'General';
@@ -719,7 +731,6 @@
             if (type === 'permanent') p.expiresAt = null;
             await db.ref('pdfs/' + id).set(p);
         }
-
         async function deletePdf(id) {
             if (!confirm('Delete this exam?')) return;
             await db.ref('pdfs/' + id).remove();
@@ -737,6 +748,103 @@
                 if (b.dataset.v === 'admin') renderAdmin();
             };
         });
+
+        function shareExam(id) {
+            const url = location.origin + location.pathname + '?exam=' + encodeURIComponent(id);
+            if (navigator.share) navigator.share({ title: 'Exam question', url }).catch(() => {});
+            else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => alert('Link copied:\n' + url));
+            else prompt('Copy this link:', url);
+        }
+
+        // Free zoom: pinch (mobile), Ctrl+wheel / +/- buttons (PC), double-click/tap = quick toggle. Zoom level stays until changed.
+        let zoom = 1, lastTap = 0;
+        const ZMIN = 1, ZMAX = 6;
+        function applyZoom(z, cx, cy) {
+            const box = document.getElementById('pdfViewer');
+            if (!box) return;
+            z = Math.min(ZMAX, Math.max(ZMIN, z));
+            const r = box.getBoundingClientRect();
+            if (cx == null) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
+            const relX = (cx - r.left + box.scrollLeft) / box.scrollWidth;
+            const relY = (cy - r.top + box.scrollTop) / box.scrollHeight;
+            zoom = z;
+            box.querySelectorAll('canvas').forEach(c => c.style.width = (z * 100) + '%');
+            box.scrollLeft = relX * box.scrollWidth - (cx - r.left);
+            box.scrollTop = relY * box.scrollHeight - (cy - r.top);
+            const l = document.getElementById('zoomLbl');
+            if (l) l.textContent = Math.round(z * 100) + '%';
+        }
+        const inViewer = e => e.target.closest && e.target.closest('#pdfViewer');
+
+        document.addEventListener('dblclick', e => {
+            if (inViewer(e)) applyZoom(zoom > 1.05 ? 1 : 2.5, e.clientX, e.clientY);
+        });
+        document.addEventListener('wheel', e => {
+            if (inViewer(e) && e.ctrlKey) { e.preventDefault(); applyZoom(zoom * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY); }
+        }, { passive: false });
+
+        // PC: drag to move around when zoomed
+        let drag = null;
+        document.addEventListener('mousedown', e => {
+            const box = inViewer(e);
+            if (box && e.button === 0 && zoom > 1) { drag = { x: e.clientX, y: e.clientY, l: box.scrollLeft, t: box.scrollTop, box: document.getElementById('pdfViewer') }; box.style.cursor = 'grabbing'; }
+        });
+        document.addEventListener('mousemove', e => {
+            if (!drag) return;
+            drag.box.scrollLeft = drag.l - (e.clientX - drag.x);
+            drag.box.scrollTop = drag.t - (e.clientY - drag.y);
+        });
+        document.addEventListener('mouseup', () => { if (drag) { drag.box.style.cursor = zoom > 1 ? 'grab' : ''; drag = null; } });
+
+        // Mobile: pinch to zoom (any size), one finger scrolls, double-tap toggles
+        let pinch = null;
+        const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+        document.addEventListener('touchstart', e => {
+            if (inViewer(e) && e.touches.length === 2) pinch = { d: dist(e.touches), z: zoom };
+        }, { passive: true });
+        document.addEventListener('touchmove', e => {
+            if (pinch && e.touches.length === 2) {
+                e.preventDefault();
+                const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2, cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                applyZoom(pinch.z * dist(e.touches) / pinch.d, cx, cy);
+            }
+        }, { passive: false });
+        document.addEventListener('touchend', e => {
+            if (pinch) { if (e.touches.length < 2) pinch = null; return; }
+            if (inViewer(e) && e.changedTouches.length === 1 && e.touches.length === 0) {
+                const now = Date.now();
+                if (now - lastTap < 300) { e.preventDefault(); applyZoom(zoom > 1.05 ? 1 : 2.5, e.changedTouches[0].clientX, e.changedTouches[0].clientY); lastTap = 0; }
+                else lastTap = now;
+            }
+        }, { passive: false });
+
+        // Best-effort anti-screenshot / anti-copy (browsers cannot fully block screenshots)
+        (function () {
+            const st = document.createElement('style');
+            st.textContent = `.exam-active{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+              .exam-active #pdfViewer canvas{transition:filter .1s}
+              body.shield #pdfViewer{visibility:hidden}
+              @media print{body *{display:none!important}body::after{content:"Printing is disabled";display:block}}`;
+            document.head.appendChild(st);
+            const on = () => activeExam && document.body.classList.add('shield');
+            const off = () => document.body.classList.remove('shield');
+            const end = () => { if (activeExam) { document.body.classList.remove('shield'); finishExam(true, 'Screenshot attempt detected'); } };
+            document.addEventListener('visibilitychange', () => document.hidden ? on() : off());
+            window.addEventListener('blur', on);
+            window.addEventListener('focus', off);
+            document.addEventListener('contextmenu', e => { if (activeExam) e.preventDefault(); });
+            ['copy', 'cut', 'dragstart'].forEach(ev => document.addEventListener(ev, e => { if (activeExam) e.preventDefault(); }));
+            document.addEventListener('keydown', e => {
+                if (!activeExam) return;
+                const k = e.key.toLowerCase();
+                if (k === 'printscreen' || (e.ctrlKey || e.metaKey) && ['p', 's', 'c', 'u'].includes(k) || (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(k)) || (e.ctrlKey && e.shiftKey && k === 's') || k === 'f12') {
+                    e.preventDefault(); on();
+                    try { navigator.clipboard.writeText(''); } catch (_) {}
+                    if (k !== 'f12' && !(e.ctrlKey && k === 'c') && !(e.ctrlKey && k === 'u')) { end(); } else setTimeout(off, 1500);
+                }
+            });
+            document.addEventListener('keyup', e => { if (e.key === 'PrintScreen' && activeExam) { try { navigator.clipboard.writeText(''); } catch (_) {} end(); } });
+        })();
 
         load();
         renderDash();
