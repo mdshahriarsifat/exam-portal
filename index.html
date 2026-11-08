@@ -440,7 +440,7 @@
               </div>
               <div style="display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 10px;font-size:13px;color:var(--sub)">
                 <span>📚 ${p.class || 'General'}</span>
-                <span>⏱ ${p.duration} min</span>
+                <span>⏱ ${fmtDur(p.duration * 60000)}</span>
                 <span>📅 ${fmtDate(p.uploadedAt)}</span>
               </div>
               <label>Your name</label>
@@ -472,7 +472,7 @@
             el.innerHTML = `
             <div class="card">
               <h2 style="text-transform:none;letter-spacing:0;color:var(--text);font-size:18px">${p.name}</h2>
-              <p class="meta" style="color:var(--sub);font-size:13px">👤 ${name}  ·  📚 ${p.class || 'General'}  ·  ⏱ ${p.duration} min</p>
+              <p class="meta" style="color:var(--sub);font-size:13px">👤 ${name}  ·  📚 ${p.class || 'General'}  ·  ⏱ ${fmtDur(p.duration * 60000)}</p>
               <div class="timer" id="examTimer">--:--</div>
 
               <div style="background: rgba(217, 83, 79, 0.1); border: 1px solid var(--danger); color: #ff8a80; padding: 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 12px; text-align: center; line-height: 1.5;">
@@ -674,7 +674,7 @@
                 <div class="pdf-item">
                   <div>
                     <strong>${p.name}</strong>
-                    <div class="meta">📚 ${p.class || 'General'} · ⏱ ${p.duration}min · ${p.visibility==='permanent'?'Permanent':p.visibility==='hidden'?'Hidden':'Visible until '+fmtDate(p.expiresAt)}
+                    <div class="meta">📚 ${p.class || 'General'} · ⏱ ${fmtDur(p.duration * 60000)} · ${p.visibility==='permanent'?'Permanent':p.visibility==='hidden'?'Hidden':'Visible until '+fmtDate(p.expiresAt)}
                     <span class="badge ${isVisible(p)?'open':'locked'}">${isVisible(p)?'Visible':'Hidden'}</span></div>
                   </div>
                   <div class="row" style="flex:none;gap:6px">
