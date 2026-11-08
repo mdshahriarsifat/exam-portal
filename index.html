@@ -50,6 +50,11 @@
             font-weight: 600;
             letter-spacing: .5px
         }
+        h1 a {
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer
+        }
         nav {
             display: flex;
             gap: 8px;
@@ -290,7 +295,7 @@
 <body>
     <div class="wrap">
         <header>
-            <h1>Exam Portal</h1>
+            <h1><a href="./" id="siteTitle" title="Go to home page">Exam Portal</a></h1>
             <nav>
                 <button class="navbtn active" data-v="exam">Exams</button>
                 <button class="navbtn" data-v="dash">Dashboard</button>
@@ -368,11 +373,13 @@
         function fmtDate(ts) { return new Date(ts).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric',
                 minute: '2-digit', hour12: true, day: '2-digit', month: 'short', year: 'numeric' }); }
         function fmtDur(ms) {
-            const s = Math.floor(ms / 1000);
-            const h = Math.floor(s / 3600),
-                m = Math.floor((s % 3600) / 60),
-                sec = s % 60;
-            return (h ? h + 'h ' : '') + (m ? m + 'm ' : '') + sec + 's';
+            const total = Math.max(0, Math.floor(ms / 1000));
+            const h = Math.floor(total / 3600),
+                m = Math.floor((total % 3600) / 60),
+                sec = total % 60;
+            if (h) return h + 'h ' + m + 'm ' + sec + 's';
+            if (m) return m + 'm ' + sec + 's';
+            return sec + 's';
         }
 
         // ---------- get unique classes from pdfs ----------
@@ -525,9 +532,7 @@
                 if (remain <= 0) { t.textContent = "Time's up!";
                     clearInterval(timerInt);
                     finishExam(true); return; }
-                const m = Math.floor(remain / 60000),
-                    s = Math.floor((remain % 60000) / 1000);
-                t.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                t.textContent = fmtDur(remain);
             }, 1000);
         }
 
@@ -737,6 +742,12 @@
         }
 
         // ---------- NAV ----------
+        // Clicking the site name reloads and returns to the home page
+        document.getElementById('siteTitle').addEventListener('click', e => {
+            e.preventDefault();
+            location.href = location.pathname;
+        });
+
         document.querySelectorAll('.navbtn').forEach(b => {
             b.onclick = () => {
                 document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
