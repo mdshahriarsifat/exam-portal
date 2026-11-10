@@ -347,6 +347,34 @@
         let classFilterExam = 'all';
         let classFilterDash = 'all';
 
+        // ---------- device ID + IP (to spot the same person using different names) ----------
+        function esc(t) {
+            return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function getDeviceId() {
+            try {
+                let id = localStorage.getItem('deviceId');
+                if (!id) {
+                    id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+                    localStorage.setItem('deviceId', id);
+                }
+                return id;
+            } catch (_) { return 'unknown'; }
+        }
+        async function fetchIp() {
+            for (const url of ['https://api.ipify.org?format=json', 'https://api64.ipify.org?format=json']) {
+                try {
+                    const ctrl = new AbortController();
+                    const t = setTimeout(() => ctrl.abort(), 4000);
+                    const r = await fetch(url, { signal: ctrl.signal });
+                    clearTimeout(t);
+                    const j = await r.json();
+                    if (j && j.ip) return j.ip;
+                } catch (_) {}
+            }
+            return 'unknown';
+        }
+
         function load() {
             db.ref('pdfs').on('value', s => {
                 const val = s.val();
@@ -459,7 +487,9 @@
             const p = pdfs.find(x => x.id === id);
             const name = document.getElementById('ename-' + id).value.trim();
             if (!name) { alert('Please enter your name'); return; }
-            activeExam = { p, name, start: Date.now(), durationMs: p.duration * 60000 };
+            activeExam = { p, name, start: Date.now(), durationMs: p.duration * 60000, ip: 'unknown', deviceId: getDeviceId() };
+            const examRef = activeExam;
+            fetchIp().then(ip => { examRef.ip = ip; });
             renderExamSession();
         }
 
@@ -549,7 +579,9 @@
                 exam: exam.p.name,
                 class: exam.p.class || 'General',
                 date: Date.now(),
-                spentMs: spent
+                spentMs: spent,
+                ip: exam.ip || 'unknown',
+                deviceId: exam.deviceId || 'unknown'
             });
             alert(reason || (auto ? 'Time is up. Exam submitted.' : 'Exam submitted.'));
             renderExam();
@@ -581,6 +613,20 @@
         document.addEventListener('contextmenu', e => { if (activeExam) e.preventDefault(); });
 
         // ---------- DASHBOARD ----------
+        // Admin-only: shows IP under the name and flags same device / same IP with a different name
+        function ipNote(l) {
+            if (!l.ip && !l.deviceId) return '';
+            const norm = x => (x || '').trim().toLowerCase();
+            const same = f => logs.filter(o => o.id !== l.id && o.exam === l.exam && f(o) && norm(o.name) !== norm(l.name));
+            const dev = l.deviceId && l.deviceId !== 'unknown' ? same(o => o.deviceId === l.deviceId) : [];
+            const ip = l.ip && l.ip !== 'unknown' ? same(o => o.ip === l.ip) : [];
+            const names = a => [...new Set(a.map(o => esc(o.name)))].join(', ');
+            let html = `<div style="font-size:11px;color:var(--sub);font-weight:400">IP: ${esc(l.ip || 'n/a')}</div>`;
+            if (dev.length) html += `<div style="font-size:11px;color:#d33;font-weight:600">⚠ Same device as: ${names(dev)}</div>`;
+            else if (ip.length) html += `<div style="font-size:11px;color:#b8860b">Same IP as: ${names(ip)}</div>`;
+            return html;
+        }
+
         function renderDash() {
             const el = document.getElementById('view-dash');
 
@@ -620,7 +666,7 @@
 
             el.innerHTML = filterHtml + `<div class="card"><h2>Exam attempts</h2>
             <table><thead><tr><th>Name</th><th>Exam</th><th>Class</th><th>Date & time</th><th>Duration spent</th>${admin?'<th></th>':''}</tr></thead><tbody>
-            ${filteredLogs.map(l => `<tr><td>${l.name}</td><td>${l.exam}</td><td>${l.class || 'General'}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
+            ${filteredLogs.map(l => `<tr><td>${esc(l.name)}${admin ? ipNote(l) : ''}</td><td>${esc(l.exam)}</td><td>${l.class || 'General'}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
             </tbody></table></div>`;
         }
 
