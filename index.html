@@ -375,22 +375,56 @@
             return 'unknown';
         }
 
+        let pdfsLoaded = false;
+        function showLoadMsg(html) {
+            if (pdfsLoaded || activeExam) return;
+            const el = document.getElementById('view-exam');
+            if (el) el.innerHTML = `<div class="card" style="text-align:center"><p>${html}</p></div>`;
+        }
         function load() {
+            showLoadMsg('Loading exams… please wait.');
+            setTimeout(() => showLoadMsg('Still loading — your internet looks slow. Please wait, or <button class="small" onclick="location.reload()">Retry</button>'), 8000);
+            db.ref('exams').on('value', s => {
+                pdfsLoaded = true;
+                const val = s.val();
+                examsArr = val ? Object.values(val) : [];
+                mergePdfs();
+            }, err => {
+                showLoadMsg('Could not load exams (' + esc(err && err.message) + '). <button class="small" onclick="location.reload()">Retry</button>');
+            });
+            // old storage (exams with the PDF inside). Becomes empty after migration.
             db.ref('pdfs').on('value', s => {
                 const val = s.val();
-                pdfs = val ? Object.values(val) : [];
-                renderExam();
-                renderAdmin();
-                renderDash();
-            });
+                legacyArr = val ? Object.values(val) : [];
+                mergePdfs();
+            }, () => {});
             db.ref('logs').on('value', s => {
                 const val = s.val();
                 logs = val ? Object.values(val).sort((a, b) => b.date - a.date) : [];
                 renderDash();
             });
         }
-        async function savePdfs() { const obj = {};
-            pdfs.forEach(p => obj[p.id] = p); await db.ref('pdfs').set(obj); }
+        let examsArr = [], legacyArr = [];
+        function mergePdfs() {
+            const ids = new Set(examsArr.map(x => x.id));
+            pdfs = [...examsArr, ...legacyArr.filter(x => !ids.has(x.id))];
+            renderExam();
+            renderAdmin();
+            renderDash();
+        }
+        // One-time move of old exams (PDF stored inside the exam) to the new layout: small list + separate PDF files
+        async function migrateLegacy() {
+            try {
+                const val = (await db.ref('pdfs').once('value')).val();
+                if (!val) return;
+                for (const p of Object.values(val)) {
+                    const { data, ...meta } = p;
+                    if (data) await db.ref('examFiles/' + p.id).set(data);
+                    await db.ref('exams/' + p.id).set(meta);
+                }
+                await db.ref('pdfs').remove();
+            } catch (e) { console.error('Migration failed', e); }
+        }
         async function saveLog(entry) { await db.ref('logs/' + entry.id).set(entry); }
 
         function isVisible(p) {
@@ -483,14 +517,35 @@
             renderExam();
         }
 
-        function startExam(id) {
+        let startingExam = false;
+        async function startExam(id) {
+            if (startingExam) return;
             const p = pdfs.find(x => x.id === id);
             const name = document.getElementById('ename-' + id).value.trim();
             if (!name) { alert('Please enter your name'); return; }
-            activeExam = { p, name, start: Date.now(), durationMs: p.duration * 60000, ip: 'unknown', deviceId: getDeviceId() };
-            const examRef = activeExam;
-            fetchIp().then(ip => { examRef.ip = ip; });
-            renderExamSession();
+            const btn = document.activeElement && document.activeElement.tagName === 'BUTTON' ? document.activeElement : null;
+            startingExam = true;
+            if (btn) { btn.disabled = true; btn.textContent = 'Loading question paper…'; }
+            try {
+                let data = p.data || (legacyArr.find(x => x.id === id) || {}).data;
+                if (!data) {
+                    const snap = await Promise.race([
+                        db.ref('examFiles/' + id).once('value'),
+                        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 45000))
+                    ]);
+                    data = snap.val();
+                }
+                if (!data) throw new Error('missing');
+                activeExam = { p: { ...p, data }, name, start: Date.now(), durationMs: p.duration * 60000, ip: 'unknown', deviceId: getDeviceId() };
+                const examRef = activeExam;
+                fetchIp().then(ip => { examRef.ip = ip; });
+                renderExamSession();
+            } catch (e) {
+                alert('Could not load the question paper. Please check your internet and try again.');
+                renderExam();
+            } finally {
+                startingExam = false;
+            }
         }
 
         function renderExamSession() {
@@ -767,7 +822,7 @@
 
         async function adminLogin() {
             const v = document.getElementById('adminPass').value;
-            if (await sha256(v) === ADMIN_HASH) { admin = true;
+            if (await sha256(v) === ADMIN_HASH) { admin = true; migrateLegacy();
                 renderAdmin(); } else document.getElementById('adminErr').textContent = 'Incorrect password';
         }
 
@@ -787,18 +842,20 @@
             if (file.size > 4.5 * 1024 * 1024) { err.textContent = 'File too large (max ~4.5MB for storage).'; return; }
             const reader = new FileReader();
             reader.onload = async function(e) {
+                const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
                 const entry = {
-                    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                    id,
                     name,
                     class: cls,
                     duration,
-                    data: e.target.result,
                     uploadedAt: Date.now(),
                     visibility: visType === 'hidden' ? 'hidden' : (visType === 'permanent' ? 'permanent' : 'timed'),
                     expiresAt: visType === 'timed' ? Date.now() + visMinutes * 60000 : null
                 };
-                pdfs.unshift(entry);
-                await savePdfs();
+                try {
+                    await db.ref('examFiles/' + id).set(e.target.result);
+                    await db.ref('exams/' + id).set(entry);
+                } catch (ex) { err.textContent = 'Upload failed: ' + ex.message; return; }
                 // reset filter to 'all' after upload so new exam appears
                 classFilterExam = 'all';
                 classFilterDash = 'all';
@@ -812,10 +869,13 @@
             const p = pdfs.find(x => x.id === id);
             p.visibility = type;
             if (type === 'permanent') p.expiresAt = null;
-            await db.ref('pdfs/' + id).set(p);
+            const { data, ...meta } = p;
+            await db.ref('exams/' + id).set(meta);
         }
         async function deletePdf(id) {
             if (!confirm('Delete this exam?')) return;
+            await db.ref('exams/' + id).remove();
+            await db.ref('examFiles/' + id).remove();
             await db.ref('pdfs/' + id).remove();
         }
 
