@@ -613,21 +613,53 @@
         document.addEventListener('contextmenu', e => { if (activeExam) e.preventDefault(); });
 
         // ---------- DASHBOARD ----------
-        // Admin-only: shows IP under the name and flags same device / same IP with a different name
+        // Admin-only: group attempts by device (across ALL exams) and flag devices used with 2+ different names
+        const DEV_COLORS = ['#e5484d', '#e08a00', '#3e9bff', '#a259ff', '#12a594', '#d6409f'];
+        let deviceInfo = {};
+        function computeDevices() {
+            const norm = x => (x || '').trim().toLowerCase();
+            const byDev = {};
+            logs.forEach(l => {
+                if (!l.deviceId || l.deviceId === 'unknown') return;
+                (byDev[l.deviceId] = byDev[l.deviceId] || []).push(l);
+            });
+            const sus = Object.entries(byDev)
+                .map(([id, arr]) => ({ id, arr, names: [...new Set(arr.map(o => norm(o.name)))] }))
+                .filter(d => d.names.length >= 2)
+                .sort((x, y) => y.names.length - x.names.length || y.arr.length - x.arr.length);
+            deviceInfo = {};
+            sus.forEach((d, i) => {
+                deviceInfo[d.id] = { n: i + 1, color: DEV_COLORS[i % DEV_COLORS.length], count: d.names.length, arr: d.arr };
+            });
+        }
         function ipNote(l) {
             if (!l.ip && !l.deviceId) return '';
-            const norm = x => (x || '').trim().toLowerCase();
-            const same = f => logs.filter(o => o.id !== l.id && o.exam === l.exam && f(o) && norm(o.name) !== norm(l.name));
-            const dev = l.deviceId && l.deviceId !== 'unknown' ? same(o => o.deviceId === l.deviceId) : [];
-            const ip = l.ip && l.ip !== 'unknown' ? same(o => o.ip === l.ip) : [];
-            const names = a => [...new Set(a.map(o => esc(o.name)))].join(', ');
             let html = `<div style="font-size:11px;color:var(--sub);font-weight:400">IP: ${esc(l.ip || 'n/a')}</div>`;
-            if (dev.length) html += `<div style="font-size:11px;color:#d33;font-weight:600">⚠ Same device as: ${names(dev)}</div>`;
-            else if (ip.length) html += `<div style="font-size:11px;color:#b8860b">Same IP as: ${names(ip)}</div>`;
+            const d = deviceInfo[l.deviceId];
+            if (d) html += `<div style="font-size:11px;font-weight:700;color:${d.color}">⚠ Device ${d.n} · ${d.count} names</div>`;
             return html;
+        }
+        function deviceSummaryHtml() {
+            const list = Object.values(deviceInfo).sort((a, b) => a.n - b.n);
+            if (!list.length) return '';
+            const rows = list.map(d => {
+                const byName = {};
+                d.arr.slice().sort((x, y) => x.date - y.date).forEach(o => {
+                    const k = (o.name || '').trim().toLowerCase();
+                    (byName[k] = byName[k] || { name: o.name, items: [] }).items.push(o);
+                });
+                const ips = [...new Set(d.arr.map(o => o.ip).filter(x => x && x !== 'unknown'))].join(', ');
+                const lines = Object.values(byName).map(n =>
+                    `<div style="margin:2px 0"><b>${esc(n.name)}</b> <span style="color:var(--sub)">— ${n.items.map(o => esc(o.exam) + ' (' + fmtDate(o.date) + ')').join('; ')}</span></div>`).join('');
+                return `<div style="border-left:4px solid ${d.color};padding:6px 12px;margin:10px 0;font-size:13px">
+                    <div style="font-weight:700;color:${d.color}">Device ${d.n} · ${d.count} different names${ips ? ' · IP: ' + esc(ips) : ''}</div>${lines}</div>`;
+            }).join('');
+            return `<div class="card"><h2>Suspicious devices</h2>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 6px">Same device used with different names (across all exams).</p>${rows}</div>`;
         }
 
         function renderDash() {
+            computeDevices();
             const el = document.getElementById('view-dash');
 
             // get unique classes from logs (and also from pdfs for consistency)
@@ -664,7 +696,7 @@
                 return;
             }
 
-            el.innerHTML = filterHtml + `<div class="card"><h2>Exam attempts</h2>
+            el.innerHTML = filterHtml + (admin ? deviceSummaryHtml() : '') + `<div class="card"><h2>Exam attempts</h2>
             <table><thead><tr><th>Name</th><th>Exam</th><th>Class</th><th>Date & time</th><th>Duration spent</th>${admin?'<th></th>':''}</tr></thead><tbody>
             ${filteredLogs.map(l => `<tr><td>${esc(l.name)}${admin ? ipNote(l) : ''}</td><td>${esc(l.exam)}</td><td>${l.class || 'General'}</td><td>${fmtDate(l.date)}</td><td>${fmtDur(l.spentMs)}</td>${admin?`<td><button class="small danger" onclick="deleteLog('${l.id}')">Delete</button></td>`:''}</tr>`).join('')}
             </tbody></table></div>`;
